@@ -1,0 +1,22 @@
+# ROS2 build artifacts
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+
+# Editor
+.vscode/
+*.swp
+
+# Wheels and large binaries
+*.whl
+
+# OS
+.DS_Store
