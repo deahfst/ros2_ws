@@ -1,44 +1,87 @@
 # ros2_ws
 
-이 저장소는 로컬 ROS2 작업공간 `ros2_ws`의 내용을 GitHub 레포지토리로 옮기기 위한 초기화입니다.
+This repository contains the ROS2 workspace `ros2_ws` used for development of the arm controller and OCR tooling.
 
-## 구조
-- `src/` : ROS2 패키지 소스
-- `build/`, `install/`, `log/` : 빌드 출력 및 설치 결과
-- `ocr_captures/`, `ocr_captures_tracking/` : OCR 관련 캡쳐와 트래킹 데이터
-- `paddlepaddle_gpu-...whl` : 로컬에 보관된 패키지 파일
+Repository summary and current project status
+--------------------------------------------
+- Workspace root contains:
+  - `src/` — ROS2 packages (primary: `so_arm101_controller`).
+  - `build/`, `install/`, `log/` — colcon build outputs (ignored by `.gitignore`).
+  - `ocr_captures/`, `ocr_captures_tracking/` — datasets and debug captures used by OCR components.
+  - local third-party wheel(s): `paddlepaddle_gpu-*.whl` (kept for Jetson installs).
 
-## 빠른 시작
-로컬에서 Git 저장소를 초기화하고 커밋했습니다. 원격 GitHub 저장소에 푸시하려면 아래 예시 명령을 사용하세요.
+Progress / status (high level)
+-----------------------------
+- `so_arm101_controller` exists in `src/` and contains ROS2 Python nodes: arm controller, OCR module, vision tracker and helper scripts. Core node implementations are present and were tested locally.
+- OCR tooling and datasets are present in `ocr_captures/` and `ocr_captures_tracking/` for debugging and offline evaluation.
+- A separate repository holds the Jetson-specific OCR app: https://github.com/deahfst/Jetson_OCR
+- Repository metadata added: `.gitattributes` (tracks `*.whl` for Git LFS) and a minimal GitHub Actions CI workflow at `.github/workflows/ci.yml`.
 
-1) GitHub에 새 리포지토리 만들기(웹 또는 `gh` 사용).
-2) 예: 원격 추가 및 푸시
+Who should read this
+--------------------
+- Engineers setting up the workspace on a development machine or Nvidia Jetson device.
+- Integrators porting the project to Jetson Orin Nano (requires careful handling of PaddlePaddle wheels).
+
+Quick start — setup and build
+----------------------------
+Prerequisites:
+- Ubuntu 22.04 or the JetPack-provided Ubuntu for Jetson
+- ROS2 distribution compatible with code (source the appropriate `/opt/ros/<distro>/setup.bash`)
+- Python 3.10 recommended
+
+1) Clone and change to workspace
 
 ```bash
+git clone https://github.com/deahfst/ros2_ws.git
 cd ros2_ws
-git remote add origin <REMOTE_URL>
-git branch -M main
-git push -u origin main
 ```
 
-또는 GitHub CLI 사용:
+2) Optional: create Python virtual environment
 
 ```bash
-gh repo create <OWNER/REPO> --public --source=. --remote=origin --push
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
 ```
 
-## 주의
-- 큰 바이너리(.whl 등)는 필요시 Git LFS 사용을 고려하세요.
-- 빌드/설치 디렉토리는 `.gitignore`에 포함되어 있습니다.
-\n+## Git LFS 및 CI
-- **Git LFS**: 이 저장소에는 로컬에 보관된 `*.whl` 파일이 있어 저장소 용량이 커질 수 있습니다. `.gitattributes`에 `*.whl`이 설정되어 있습니다. 로컬에서 Git LFS를 설치한 뒤 아래 명령을 실행하세요:
+3) (Jetson) Install PaddlePaddle GPU wheel
+
+Place the matching `paddlepaddle_gpu-*.whl` into the repo root or download it separately. Then:
 
 ```bash
-# 설치 (예: Debian/Ubuntu)
-sudo apt update
+source .venv/bin/activate
+pip install ./paddlepaddle_gpu-*.whl
+```
+
+If you don't have the wheel, see https://github.com/deahfst/Jetson_OCR for prebuilt wheels or build from source there.
+
+4) Build the ROS2 workspace
+
+```bash
+source /opt/ros/<distro>/setup.bash
+colcon build --cmake-target-skip-unavailable
+source install/setup.bash
+```
+
+5) Run nodes or scripts
+
+Examples:
+
+```bash
+# run arm node via ros2
+ros2 run so_arm101_controller arm_node
+
+# or run package main directly (python entry)
+python3 src/so_arm101_controller/so_arm101_controller/main.py
+```
+
+Repository maintenance notes
+----------------------------
+- Large binaries: this repository contains wheel(s). `.gitattributes` now includes `*.whl` to be tracked by Git LFS. To enable LFS locally and move existing wheels into LFS:
+
+```bash
 sudo apt install git-lfs
 git lfs install
-cd ros2_ws
 git lfs track "*.whl"
 git add .gitattributes
 git rm --cached "*.whl"
@@ -46,5 +89,28 @@ git commit -m "Move wheel files to Git LFS"
 git push
 ```
 
-- **CI**: `.github/workflows/ci.yml`가 추가되어 푸시/PR 시 간단한 Python 기반 빌드(의존성 설치, lint, 테스트)를 실행합니다.
+If wheels are already in the history and you need to remove them, consider `git lfs migrate import --include="*.whl"` — this rewrites history and must be used carefully (coordinate with collaborators).
 
+CI
+--
+- A basic GitHub Actions workflow is included at `.github/workflows/ci.yml`. It runs on push/PR to `main`. It performs Python environment setup, optional dependency install, lint (flake8) and tests (pytest) if present. Recommended improvement: add a `colcon` build step that runs a workspace build inside CI for full validation.
+
+Contributing
+------------
+- Add new ROS2 packages under `src/` following ROS2 packaging conventions.
+- Avoid committing build output; keep `build/`, `install/`, `log/` in `.gitignore`.
+- Use Git LFS for large binary artifacts.
+
+Planned next steps
+------------------
+1. Harden CI to run `colcon build` and basic node integration tests.
+2. Add unit/integration tests for `so_arm101_controller` nodes.
+3. Decide whether to migrate large artifacts out of Git history (use `git lfs migrate` if needed).
+
+License
+-------
+See the `LICENSE` file in this repository (MIT by default).
+
+Contact
+-------
+If you need help deploying on Jetson hardware or tuning the OCR models, open an issue in this repository or in the Jetson_OCR repo: https://github.com/deahfst/Jetson_OCR
