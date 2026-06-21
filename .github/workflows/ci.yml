@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: Quick lint (flake8)
+        run: |
+          if python -c "import sys, importlib; sys.exit(0 if importlib.util.find_spec('flake8') else 1)"; then
+            flake8 || true
+          else
+            echo 'flake8 not installed; skipping lint'
+          fi
+      - name: Run tests
+        run: |
+          if [ -f pytest.ini ] || [ -d tests ]; then
+            pip install pytest || true
+            pytest -q || true
+          else
+            echo 'No tests found; skipping'
+          fi

@@ -1,0 +1,2 @@
+# Track wheel files with Git LFS
+*.whl filter=lfs diff=lfs merge=lfs -text

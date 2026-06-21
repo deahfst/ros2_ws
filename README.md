@@ -30,3 +30,21 @@ gh repo create <OWNER/REPO> --public --source=. --remote=origin --push
 ## 주의
 - 큰 바이너리(.whl 등)는 필요시 Git LFS 사용을 고려하세요.
 - 빌드/설치 디렉토리는 `.gitignore`에 포함되어 있습니다.
+\n+## Git LFS 및 CI
+- **Git LFS**: 이 저장소에는 로컬에 보관된 `*.whl` 파일이 있어 저장소 용량이 커질 수 있습니다. `.gitattributes`에 `*.whl`이 설정되어 있습니다. 로컬에서 Git LFS를 설치한 뒤 아래 명령을 실행하세요:
+
+```bash
+# 설치 (예: Debian/Ubuntu)
+sudo apt update
+sudo apt install git-lfs
+git lfs install
+cd ros2_ws
+git lfs track "*.whl"
+git add .gitattributes
+git rm --cached "*.whl"
+git commit -m "Move wheel files to Git LFS"
+git push
+```
+
+- **CI**: `.github/workflows/ci.yml`가 추가되어 푸시/PR 시 간단한 Python 기반 빌드(의존성 설치, lint, 테스트)를 실행합니다.
+
